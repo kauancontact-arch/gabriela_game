@@ -5,10 +5,10 @@ const gz = zlib.gzipSync(html);
 http.createServer((req, res) => {
   const url = req.url.split('?')[0];
   if (url === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
-  if (/^\/media\/[\w.-]+\.(mp3|mpeg|m4a|json|lrc)$/.test(url)) {
+  if (/^\/media\/[\w.-]+\.(mp3|mpeg|m4a|json|lrc|txt)$/.test(url)) {
     const f = path.join(__dirname, decodeURIComponent(url)), ext = url.split('.').pop();
     if (!fs.existsSync(f)) { res.writeHead(404); return res.end(); }
-    const type = { json: 'application/json', lrc: 'text/plain; charset=utf-8', m4a: 'audio/mp4' }[ext] || 'audio/mpeg';
+    const type = { json: 'application/json', txt: 'text/plain; charset=utf-8', lrc: 'text/plain; charset=utf-8', m4a: 'audio/mp4' }[ext] || 'audio/mpeg';
     const size = fs.statSync(f).size, m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
     const h = { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=3600' };
     if (m) {
