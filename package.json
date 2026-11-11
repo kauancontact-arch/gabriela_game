@@ -1,0 +1,8 @@
+{
+  "name": "gabriela-entre-paginas-e-memorias",
+  "version": "2.0.0",
+  "private": true,
+  "description": "GABRIELA — Entre Páginas e Memórias. Uma história original de Kauan.",
+  "scripts": { "start": "node server.js", "build": "python3 build.py" },
+  "engines": { "node": ">=18" }
+}
