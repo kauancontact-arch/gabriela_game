@@ -9,13 +9,15 @@ const UI=(()=>{const el={dlg:$('#dlg'),dt:$('#dt'),dn:$('#dn'),av:$('#av'),tap:$
       el.dt.textContent='';el.tap.style.display='block';$('#dmore').style.visibility='hidden'}))}
   async function talk(a){for(const x of a)await say(x[0],x[1])}
   function closeDlg(){el.dlg.classList.remove('on');el.tap.style.display='none';const d=D;D=null;return d}
-  el.tap.addEventListener('pointerdown',e=>{e.preventDefault();AudioSys.unlock();if(cardR){if(performance.now()-cardR.t0>900){const r=cardR;cardR=null;el.card.classList.remove('in');setTimeout(()=>{if(!cardR)el.card.style.display='none'},350);el.tap.style.display=D?'block':'none';r.res()}return}
-    if(gotR){if(performance.now()-gotR.t0>600){const r=gotR;gotR=null;el.got.classList.remove('in');el.got.style.display='none';el.tap.style.display='none';r.res()}return}
-    if(!D)return;if(D.n<D.text.length){D.n=D.text.length;el.dt.textContent=D.text;$('#dmore').style.visibility='visible'}else{sfx.tap();const d=closeDlg();d.res()}});
+  // avança diálogos, cartões e janelas com um toque em QUALQUER ponto da tela (menos botões e menus)
+  function advance(e){if(!(D||cardR||gotR))return;const tg=e.target;if(tg&&tg.closest&&tg.closest('#menu,#opts,#mini,#player,#bMenu,button,input,textarea,label'))return;e.preventDefault();e.stopPropagation();AudioSys.unlock();if(cardR){if(performance.now()-cardR.t0>450){const r=cardR;cardR=null;el.card.classList.remove('in');setTimeout(()=>{if(!cardR)el.card.style.display='none'},350);el.tap.style.display=D?'block':'none';r.res()}return}
+    if(gotR){if(performance.now()-gotR.t0>350){const r=gotR;gotR=null;el.got.classList.remove('in');el.got.style.display='none';el.tap.style.display='none';r.res()}return}
+    if(!D)return;if(D.n<D.text.length){D.n=D.text.length;el.dt.textContent=D.text;$('#dmore').style.visibility='visible'}else{sfx.tap();const d=closeDlg();d.res()}}
+  document.addEventListener('pointerdown',advance,{capture:true,passive:false});
   function choose(who,text,opts){const w=resolveWho(who);return G(new Promise(res=>{optR=res;el.opts.innerHTML='';const q=document.createElement('div');q.className='q glass';q.innerHTML=(w?'<b style="color:#ffd98a">'+w.name+'</b><br>':'')+text;el.opts.appendChild(q);
     opts.forEach((o,i)=>{const b=document.createElement('button');b.textContent=o;b.addEventListener('click',()=>{if(!optR)return;sfx.pick();const r=optR;optR=null;el.opts.style.display='none';r(i)});el.opts.appendChild(b)});el.opts.style.display='flex'}))}
   function card(html,o){o=o||{};return G(new Promise(res=>{el.card.innerHTML=html+(o.auto?'':'<div class="more">toque para continuar</div>');el.card.style.display='flex';el.card.style.background=o.bg||'';requestAnimationFrame(()=>requestAnimationFrame(()=>el.card.classList.add('in')));
-    if(o.auto){setTimeout(()=>{el.card.classList.remove('in');setTimeout(()=>{el.card.style.display='none';res()},600)},o.auto*1000/Math.max(1,tscale))}else{cardR={res,t0:performance.now()-(tscale>1?900:0)};el.tap.style.display='block'}}))}
+    if(o.auto){setTimeout(()=>{el.card.classList.remove('in');setTimeout(()=>{el.card.style.display='none';res()},600)},o.auto*1000/Math.max(1,tscale))}else{cardR={res,t0:performance.now()-(tscale>1?450:0)};el.tap.style.display='block'}}))}
   const quote=(t,sub)=>card('<div class="q">'+t+'</div>'+(sub?'<div class="s" style="margin-top:calc(18*var(--u))">'+sub+'</div>':''));
   const chapter=(k,t,s)=>card('<div class="k">'+k+'</div><div class="t">'+t+'</div><div class="s">'+s+'</div>',{auto:3,bg:'rgba(6,5,10,.9)'});
   function fade(to,dur){dur=(dur==null?.5:dur)/Math.max(1,tscale);el.fade.style.transition='opacity '+dur+'s ease';el.fade.style.opacity=to;return wait(dur*Math.max(1,tscale)+.03)}
@@ -23,7 +25,7 @@ const UI=(()=>{const el={dlg:$('#dlg'),dt:$('#dt'),dn:$('#dn'),av:$('#av'),tap:$
   function goal(t){if(!t){el.goal.classList.remove('on');return}el.goal.textContent=t;el.goal.classList.add('on')}
   function toast(title,sub){el.toast.innerHTML='<small>'+(sub||'Conquista')+'</small><b>'+title+'</b>';el.toast.classList.add('on');sfx.ok();clearTimeout(toastT);toastT=setTimeout(()=>el.toast.classList.remove('on'),3600)}
   function got(ic,title,desc){sfx.ok();return G(new Promise(res=>{const c=el.got.querySelector('canvas'),g2=c.getContext('2d');g2.imageSmoothingEnabled=false;g2.clearRect(0,0,64,64);g2.drawImage(iconCv(ic),2,2,60,60);
-    el.got.querySelector('b').textContent=title;el.got.querySelector('p').textContent=desc||'';el.got.style.display='flex';requestAnimationFrame(()=>el.got.classList.add('in'));gotR={res,t0:performance.now()-(tscale>1?600:0)};el.tap.style.display='block'}))}
+    el.got.querySelector('b').textContent=title;el.got.querySelector('p').textContent=desc||'';el.got.style.display='flex';requestAnimationFrame(()=>el.got.classList.add('in'));gotR={res,t0:performance.now()-(tscale>1?350:0)};el.tap.style.display='block'}))}
   // pontos de interesse
   function addHot(h){const e=document.createElement('div');e.className='hot';e.innerHTML='<i></i><b></b>';e.addEventListener('pointerdown',async ev=>{ev.preventDefault();ev.stopPropagation();AudioSys.unlock();if(busy||blocking()||!h.on)return;busy++;const g=gen;sfx.tap();
       try{const p=scene.player;if(p&&h.stand!==null){await p.walkTo(h.stand!=null?h.stand:h.x+(p.x<h.x?-(h.gap??52):(h.gap??52)));p.face(h.face??h.x)}await h.act(h)}catch(err){if(err!==CANCEL){console.error(err);window.__err=String(err&&err.stack||err)}}finally{if(g===gen)busy=Math.max(0,busy-1)}});
