@@ -13,7 +13,7 @@ function paintPerson(c,L,dir,f,left){const P=mk(c),bob=(f===1||f===3)?-1:0,hy=3+
     if(L.dress){P(L.bottom,5,19,10,6);P(L.shoes,7,25,2,1);P(L.shoes,11,25,2,1)}
     else{P(L.bottom,7,19,3,5+lf);P(L.bottom,10,19,3,5+rf);P(L.shoes,7,24+lf,3,2);P(L.shoes,10,24+rf,3,2);if(L.shorts){P(L.skin,7,22,3,2+lf);P(L.skin,10,22,3,2+rf)}}
     P(L.top,6,12+bob,8,8);if(L.coat)P(L.top,6,19,8,3);
-    P(L.skin,5,13+bob,1,6);P(L.skin,14,13+bob,1,6);P(L.top,5,12+bob,1,L.coat?6:L.nosleeve?0:2);P(L.top,14,12+bob,1,L.coat?6:L.nosleeve?0:2);if(L.nosleeve){P(L.skin,5,12+bob,1,1);P(L.skin,14,12+bob,1,1)}
+    if(!L.lift){P(L.skin,5,13+bob,1,6);P(L.skin,14,13+bob,1,6)}P(L.top,5,12+bob,1,L.coat?6:L.nosleeve?0:2);P(L.top,14,12+bob,1,L.coat?6:L.nosleeve?0:2);if(L.nosleeve){P(L.skin,5,12+bob,1,1);P(L.skin,14,12+bob,1,1)}
     if(L.tat){const tx=dir==='d'?14:5;P('#39404a',tx,14+bob,1,1);P('#39404a',tx,16+bob,1,1);P('#5a4632',tx,17+bob,1,1);P('#39404a',tx,18+bob,1,1)}if(L.cargo&&!L.dress){P('#6a94c8',7,21,1,2);P('#6a94c8',12,21,1,2)}
     if(L.shawl){P(L.shawl,5,12+bob,10,3)}
     P(L.skin,6,hy+1,8,8);
@@ -102,3 +102,9 @@ function shelf(P,x,y,w,rows,r){for(let i=0;i<rows;i++){const yy=y+i*18;P('#22140
   P(BOOKC[r()*BOOKC.length|0],bx,yy+15-bh,bw,bh);if(r()<.35)P('#d9b24a',bx,yy+17-bh,bw,1);bx+=bw}P('#5a3a22',x-2,yy+15,w+4,3)}}
 function glow(c,x,y,r,col){const gr=c.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=gr;c.fillRect(x-r,y-r,r*2,r*2)}
 function vgrad(c,x,y,w,h,a,b){const gr=c.createLinearGradient(0,y,0,y+h);gr.addColorStop(0,a);gr.addColorStop(1,b);c.fillStyle=gr;c.fillRect(x,y,w,h)}
+
+// braços erguendo peso (k: 0 = baixo, 1 = em cima). mode 'db' = halteres (rosca até o ombro), 'bar' = barra acima da cabeça
+function drawLiftArms(L,x,y,k,mode){x=Math.round(x)-10;y=Math.round(y)-26;const top=mode==='bar'?1:8,hy=Math.round(lerp(18,top,k)),K='#17101a';
+  for(const ax of[5,14]){const a=Math.min(12,hy),b=Math.max(12,hy);R(K,x+ax-1,y+a-1,3,b-a+3);R(L.skin,x+ax,y+a,1,b-a+1);if(!L.nosleeve)R(L.top,x+ax,y+12,1,2)}
+  if(mode==='bar'){R(K,x-3,y+hy-1,26,3);R('#c9cdd4',x-2,y+hy,24,1);for(const px of[-4,20]){R(K,px+x,y+hy-4,5,9);R('#e84a6f',px+x+1,y+hy-3,3,7)}}
+  else for(const ax of[5,14]){R(K,x+ax-3,y+hy-2,7,5);R('#e84a6f',x+ax-2,y+hy-1,2,3);R('#e84a6f',x+ax+1,y+hy-1,2,3);R('#9a9ea8',x+ax,y+hy,1,1)}}

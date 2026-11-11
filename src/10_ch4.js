@@ -1,3 +1,4 @@
+function shade2(h){const n=parseInt(h.slice(1),16),f=v=>Math.round(v*.72);return'rgb('+f(n>>16&255)+','+f(n>>8&255)+','+f(n&255)+')'}
 // ============ CAPÍTULO IV — SPEAK, O GUARDIÃO DO SOFÁ ============
 function paintHome(c){const P=mk(c),r=rng(33),Wd=400;P('#d8c3a5',0,0,Wd,80);for(let x=0;x<Wd;x+=16)P('#d0b998',x,0,1,80);P('#f4e8cf',0,0,Wd,3);P('#8a6a4a',0,76,Wd,5);P('#6b4a32',0,80,Wd,2);
   // janela + cortinas
@@ -21,7 +22,7 @@ STEPS[4]=async function(){let st=0,checks=0,trail=0,cush=0,remote=false,film=fal
   room.pet={x:0,y:0,hidden:true,mode:'stay',f:0,ft:0};
   const sofa=room.add(deco('sofa',150,84,100,12,o=>{R('#17101a',149,54,102,45);R('#7a4a5a',150,55,100,26);R('#8a566a',152,57,96,3);R('#935a6c',150,79,100,14);R('#a86a7c',160,80,39,10);R('#a86a7c',201,80,39,10);R('#6a3a4a',150,66,10,31);R('#6a3a4a',240,66,10,31);R('#5a2a3a',150,93,100,5);
     for(let i=0;i<cush;i++)icon('cushion',[162,226,194][i],68);
-    if(room.flag.couch){drawSeated(room.p.look,182,86);drawSeated(KAUAN,222,86);R('#935a6c',171,86,62,7);g.drawImage(speakSpr(0,1),189,72);const t=time%2;if(room.zoom===1)T('z',214+t*3-room.camX,70-t*5,{size:5+t*1.5,c:'#fff',alpha:1-t/2,i:1,sh:1})}},
+    if(room.flag.couch){const P2=[[room.p.look,182],[KAUAN,222]];for(const[L2,x]of P2){drawSeated(L2,x,80);R('#17101a',x-6,78,13,7);R(L2.bottom,x-5,79,11,5);R(shade2(L2.bottom),x-5,83,11,1)}R('#17101a',150,84,100,1);R('#935a6c',150,85,100,8);R('#a86a7c',152,85,96,2);for(const[L2,x]of P2){R('#17101a',x-5,92,4,8);R('#17101a',x+1,92,4,8);R(L2.bottom,x-4,92,2,6);R(L2.bottom,x+2,92,2,6);R(L2.shoes,x-5,97,4,2);R(L2.shoes,x+1,97,4,2)}g.drawImage(speakSpr(0,1),190,64);const t=time%2;if(room.zoom===1)T('z',214+t*3-room.camX,70-t*5,{size:5+t*1.5,c:'#fff',alpha:1-t/2,i:1,sh:1})}},
     async()=>{if(st<6)return say('Gabriela','O sofá mais confortável do mundo. Mas ainda tem coisa pra arrumar antes de sentar.');room.flag.sit=1},{top:42}));
   const spot=(id,x,y,w,h,top,miss,dx,dy)=>({id,x,y,w,h,top,async hide(){if(st>0)return false;if(seen[id]){await say('','Nada novo por aqui.');return true}seen[id]=1;checks++;
     if(checks<3){await say('',miss+(checks===2?' Um rabinho preto some atrás de um móvel…':''));return true}

@@ -232,7 +232,7 @@ function paintPerson(c,L,dir,f,left){const P=mk(c),bob=(f===1||f===3)?-1:0,hy=3+
     if(L.dress){P(L.bottom,5,19,10,6);P(L.shoes,7,25,2,1);P(L.shoes,11,25,2,1)}
     else{P(L.bottom,7,19,3,5+lf);P(L.bottom,10,19,3,5+rf);P(L.shoes,7,24+lf,3,2);P(L.shoes,10,24+rf,3,2);if(L.shorts){P(L.skin,7,22,3,2+lf);P(L.skin,10,22,3,2+rf)}}
     P(L.top,6,12+bob,8,8);if(L.coat)P(L.top,6,19,8,3);
-    P(L.skin,5,13+bob,1,6);P(L.skin,14,13+bob,1,6);P(L.top,5,12+bob,1,L.coat?6:L.nosleeve?0:2);P(L.top,14,12+bob,1,L.coat?6:L.nosleeve?0:2);if(L.nosleeve){P(L.skin,5,12+bob,1,1);P(L.skin,14,12+bob,1,1)}
+    if(!L.lift){P(L.skin,5,13+bob,1,6);P(L.skin,14,13+bob,1,6)}P(L.top,5,12+bob,1,L.coat?6:L.nosleeve?0:2);P(L.top,14,12+bob,1,L.coat?6:L.nosleeve?0:2);if(L.nosleeve){P(L.skin,5,12+bob,1,1);P(L.skin,14,12+bob,1,1)}
     if(L.tat){const tx=dir==='d'?14:5;P('#39404a',tx,14+bob,1,1);P('#39404a',tx,16+bob,1,1);P('#5a4632',tx,17+bob,1,1);P('#39404a',tx,18+bob,1,1)}if(L.cargo&&!L.dress){P('#6a94c8',7,21,1,2);P('#6a94c8',12,21,1,2)}
     if(L.shawl){P(L.shawl,5,12+bob,10,3)}
     P(L.skin,6,hy+1,8,8);
@@ -321,6 +321,12 @@ function shelf(P,x,y,w,rows,r){for(let i=0;i<rows;i++){const yy=y+i*18;P('#22140
   P(BOOKC[r()*BOOKC.length|0],bx,yy+15-bh,bw,bh);if(r()<.35)P('#d9b24a',bx,yy+17-bh,bw,1);bx+=bw}P('#5a3a22',x-2,yy+15,w+4,3)}}
 function glow(c,x,y,r,col){const gr=c.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=gr;c.fillRect(x-r,y-r,r*2,r*2)}
 function vgrad(c,x,y,w,h,a,b){const gr=c.createLinearGradient(0,y,0,y+h);gr.addColorStop(0,a);gr.addColorStop(1,b);c.fillStyle=gr;c.fillRect(x,y,w,h)}
+
+// braços erguendo peso (k: 0 = baixo, 1 = em cima). mode 'db' = halteres (rosca até o ombro), 'bar' = barra acima da cabeça
+function drawLiftArms(L,x,y,k,mode){x=Math.round(x)-10;y=Math.round(y)-26;const top=mode==='bar'?1:8,hy=Math.round(lerp(18,top,k)),K='#17101a';
+  for(const ax of[5,14]){const a=Math.min(12,hy),b=Math.max(12,hy);R(K,x+ax-1,y+a-1,3,b-a+3);R(L.skin,x+ax,y+a,1,b-a+1);if(!L.nosleeve)R(L.top,x+ax,y+12,1,2)}
+  if(mode==='bar'){R(K,x-3,y+hy-1,26,3);R('#c9cdd4',x-2,y+hy,24,1);for(const px of[-4,20]){R(K,px+x,y+hy-4,5,9);R('#e84a6f',px+x+1,y+hy-3,3,7)}}
+  else for(const ax of[5,14]){R(K,x+ax-3,y+hy-2,7,5);R('#e84a6f',x+ax-2,y+hy-1,2,3);R('#e84a6f',x+ax+1,y+hy-1,2,3);R('#9a9ea8',x+ax,y+hy,1,1)}}
 
 // ============ ATALHOS usados pelos capítulos ============
 const say=(n,t)=>t===undefined?UI.say(null,n):UI.say(n||null,t);
@@ -641,7 +647,7 @@ function paintGym(c){const P=mk(c),r=rng(9);P('#34405a',0,0,W,82);P('#2a3348',0,
   // tapete de coreografia
   P('#17101a',191,137,62,34);P('#6a3a8a',192,138,60,32);P('#8a5ab0',195,141,54,26);P('#f4e8cf',220,146,4,4);P('#f4e8cf',212,154,4,4);P('#f4e8cf',228,154,4,4);P('#f4e8cf',220,162,4,4)}
 function gymBack(){R('#34405a',0,0,W,120);R('#2a3348',0,0,W,34);R('#e84a6f',0,34,W,1);R('#17101a',60,44,200,70);g.fillStyle='#8ab8d0';g.fillRect(62,46,196,66);R('rgba(255,255,255,.25)',90,46,14,66);R('rgba(255,255,255,.25)',200,46,8,66);R('#2c2f38',0,120,W,60);R('#22252c',0,120,W,2)}
-STEPS[2]=async function(){let st=0,items=0;const MUR=['“O peso não fica mais leve. Você é que fica mais forte.”','“Hoje é dia de perna.” (É sempre dia de perna.)','“Se o agachamento falasse, pediria desculpas.”','“Beba água. Sim, de novo.”','“Treino pago é treino feito.”'];
+STEPS[2]=async function(){let belt=0;let st=0,items=0;const MUR=['“O peso não fica mais leve. Você é que fica mais forte.”','“Hoje é dia de perna.” (É sempre dia de perna.)','“Se o agachamento falasse, pediria desculpas.”','“Beba água. Sim, de novo.”','“Treino pago é treino feito.”'];
   const BIA={id:'bia',skin:'#8a5a3a',hair:'#17101a',long:1,top:'#e84a6f',bottom:'#22222a',shoes:'#fff'},MAR={id:'mar',skin:'#e0b090',hair:'#5a3a1a',top:'#e8e8e8',bottom:'#22222a',shoes:'#c04a3a',beard:'#5a3a1a'};
   WHO['Treinadora Bia']=BIA;WHO['Marombeiro']=MAR;let look=GABI;
   const room=new Room({start:[160,168],startDir:'u',minY:86,paint:paintGym,over(){const room=this;T('CAMPEONATO DA FORÇA',262-room.camX,1.5,{align:'center',size:6.5,b:1,c:Math.sin(time*5)>-.6?'#ffd75a':'#a8842a'})}});
@@ -651,14 +657,19 @@ STEPS[2]=async function(){let st=0,items=0;const MUR=['“O peso não fica mais 
     await talk([['Gabriela',['Verde. Clássico meu.','Preto: combina com tudo, inclusive com a dor de amanhã.','Rosa-choque. Hoje a academia vai ter que lidar comigo.'][i]],['Treinadora Bia','Boa! Agora organize o equipamento: garrafinha, fones, toalha e luvas. Estão espalhados pela academia.']]);st=1;goal='Encontre os 4 acessórios de treino (0/4)'}});
   room.add({id:'mirror',x:100,y:84,w:112,h:3,top:62,act:()=>say('Gabriela',pick(['Postura: ok. Cabelo: ok. Vontade de treinar: sempre.','Espelho de academia tem uma iluminação que devia ser estudada pela ciência.','Só uma conferida rápida. Tá pago? Vai estar.']))});
   room.add({id:'mural',x:230,y:84,w:76,h:3,top:62,act:()=>say('',pick(MUR))});
-  room.add(deco('tread',26,118,34,12,o=>{R('#17101a',25,92,6,28);R('#555',26,93,4,26);R('#17101a',22,88,14,7);R('#7fd4ff',24,89,10,4);R('#17101a',25,116,36,15);R('#3a3a44',26,117,34,10);R('#22222a',28,119,30,6);for(let i=0;i<5;i++)R('#33333d',29+((i*6+(time*20|0))%30),119,1,6);R('#e84a6f',26,127,34,2)},
+  room.add(deco('tread',26,118,34,12,o=>{R('#17101a',25,92,6,28);R('#555',26,93,4,26);R('#17101a',22,88,14,7);R('#7fd4ff',24,89,10,4);R('#17101a',25,116,36,15);R('#3a3a44',26,117,34,10);R('#22222a',28,119,30,6);for(let i=0;i<5;i++)R('#33333d',29+((i*6+(belt*20|0))%30),119,1,6);R('#e84a6f',26,127,34,2)},
     async()=>{if(st<3)return say('Gabriela','Esteira. Daqui a pouco a gente conversa.');if(st>3)return say('Gabriela','Essa já foi. Próxima!');
-      await say('Treinadora Bia','Estação 1: esteira! Alterne os pés — esquerda, direita — sem parar!');await mashGame({title:'Estação 1 — Esteira',target:36,scene(n,run){gymBack();R('#17101a',96,130,128,14);R('#3a3a44',98,132,124,8);for(let i=0;i<10;i++)R('#22222a',100+((i*13-n*5)%120+120)%120,132,2,8);drawPerson(look,160,132-(run>.5?2:0),'r',n%4,3)}});
+      await say('Treinadora Bia','Estação 1: esteira! Sobe aí e alterne os pés — esquerda, direita — no seu ritmo.');
+      const p=room.p,tr=room.get('tread');await fade(1,.25);p.x=45;p.y=125;p.dir='l';tr.sy=100;room.camLock=true;room.cam=0;let run=0;room.ups=dt=>{if(run>0){run-=dt;p.ft+=dt*(6+run*10);p.f=(p.ft|0)%4;belt+=dt*(20+run*40)}else p.f=0};await fade(0,.25);
+      await UI.alt({title:'Estação 1 · Esteira',target:30,onStep(){run=Math.min(1.2,run+.35)}});room.ups=null;p.f=0;await wait(.3);await fade(1,.25);p.x=72;p.y=134;tr.sy=null;delete tr.sy;room.camLock=false;await fade(0,.25);
       st=4;await say('Treinadora Bia','Aquecida! Estação 2: halteres, ali no rack.');goal='Estação 2: vá até o rack de halteres'},{top:74}));
   room.add(deco('rack',124,94,46,8,o=>{R('#17101a',123,86,48,17);R('#555',124,87,46,3);R('#555',124,95,46,3);R('#3a3a44',126,90,2,12);R('#3a3a44',166,90,2,12);for(let i=0;i<5;i++){const x=128+i*8;R('#17101a',x,84,6,5);R(['#e84a6f','#e8a23a','#4a7ac0','#3e8f6a','#8a5ab0'][i],x+1,85,4,3);R('#17101a',x,92,6,5);R('#888',x+1,93,4,3)}},
     async()=>{if(st<4)return say('Gabriela','Halteres de todas as cores. Parece uma caixa de lápis de cor, só que pesada.');if(st>4)return say('Gabriela','Braço já tá tremendo. Chega de halter.');
       await say('Treinadora Bia','Estação 2: rosca com halteres! Suba o peso no tempo certo. Oito repetições.');
-      await timingGame({title:'Estação 2 — Halteres',reps:8,scene(p){gymBack();drawPerson(look,160,131,'d',0,3);const y=99-p*22;for(const x of[136,180]){R('#17101a',x-5,y-1,14,8);R('#e84a6f',x-4,y,4,6);R('#e84a6f',x+4,y,4,6);R('#888',x,y+2,4,2)}}});
+      const p=room.p,lk=Object.assign({},look,{id:look.id+'L',lift:1});await fade(1,.25);p.x=147;p.y=112;p.dir='d';p.look=lk;room.camLock=true;room.cam=147-80;const lift={k:0};
+      const arms=room.add({id:'arms',x:0,y:0,w:0,h:0,get sy(){return p.y+.5},draw(){drawLiftArms(lk,p.x,p.y,lift.k,'db')}});await fade(0,.25);
+      await UI.timing({title:'Estação 2 · Halteres',reps:8,speed:.82,zone:.3,btn:'ERGUER',hint:'Toque quando a marca passar pelo verde para erguer os halteres',onHit(){tween(lift,{k:1},.22,ease.o).then(()=>tween(lift,{k:0},.35,ease.io)).catch(()=>{})},onMiss(){tween(lift,{k:.3},.15).then(()=>tween(lift,{k:0},.2)).catch(()=>{})}});
+      await wait(.4);room.objs.splice(room.objs.indexOf(arms),1);p.look=look;room.camLock=false;
       st=5;await say('Treinadora Bia','Forte! Estação 3: o tapete roxo. Memória e coordenação!');goal='Estação 3: vá até o tapete de coreografia'},{top:70}));
   room.add({id:'mat',x:206,y:146,w:32,h:16,top:128,act:async()=>{if(st<5)return say('Gabriela','Um tapete com setas. Parece jogo de dança.');if(st>5)return say('Gabriela','Decorei a coreografia. Vou usar em festa.');
     await say('Treinadora Bia','Estação 3: eu mostro a sequência, você repete. Polichinelo, agachamento e passos laterais!');
@@ -673,7 +684,10 @@ STEPS[2]=async function(){let st=0,items=0;const MUR=['“O peso não fica mais 
     if(st===2){await talk([['Treinadora Bia','Tudo pronto! O circuito tem três estações: esteira, halteres e coreografia.'],['Treinadora Bia','Comece pela esteira, ali perto dos armários.']]);st=3;goal='Estação 1: suba na esteira';return}
     if(st<6)return say('Treinadora Bia','Sem pular estação, hein! Eu estou de olho.');
     if(st===6){await talk([['Treinadora Bia','Desafio final: levantamento com a barra. Seis repetições, e a barra fica mais rápida a cada uma.'],['Gabriela','Disciplina é fazer mesmo sem vontade. Bora.']]);
-      await timingGame({title:'Desafio Final — A Barra',reps:6,speed:1.45,zone:.2,scene(p){gymBack();drawPerson(look,160,131,'d',0,3);const y=93-p*30;R('#17101a',96,y,128,5);R('#aaa',97,y+1,126,3);for(const x of[96,208]){R('#17101a',x-1,y-9,18,23);R('#3a3a44',x,y-8,6,21);R('#e84a6f',x+7,y-6,5,17);R('#e8a23a',x+13,y-4,3,13)}}});
+      const p=room.p,lk=Object.assign({},look,{id:look.id+'L',lift:1});await fade(1,.3);p.x=160;p.y=136;p.dir='d';p.look=lk;room.camLock=true;room.cam=160-80;const lift={k:0};
+      const arms=room.add({id:'arms',x:0,y:0,w:0,h:0,get sy(){return p.y+.5},draw(){drawLiftArms(lk,p.x,p.y,lift.k,'bar')}});await fade(0,.3);
+      await UI.timing({title:'Desafio final · A barra',reps:6,speed:1.0,zone:.26,btn:'ERGUER',hint:'Toque no verde para erguer a barra acima da cabeça',onHit(){shake=.15;tween(lift,{k:1},.3,ease.o).then(()=>wait(.15)).then(()=>tween(lift,{k:0},.4,ease.io)).catch(()=>{})},onMiss(){tween(lift,{k:.35},.2).then(()=>tween(lift,{k:0},.25)).catch(()=>{})}});
+      await tween(lift,{k:1},.35,ease.o);shake=.4;await wait(.9);await tween(lift,{k:0},.4);room.objs.splice(room.objs.indexOf(arms),1);p.look=look;room.camLock=false;hopP(p,6);await wait(.4);
       await talk([['Treinadora Bia','CAMPEÃ! A medalha do Campeonato da Força é sua.']]);await got('medal','Medalha dourada','Por dedicação, disciplina e por nunca pular o treino.');st=7;
       await talk([['Marombeiro','Ei, Gabriela! Sério agora: você veio treinar ou pretende morar aqui?'],['Gabriela','As duas coisas. Me avisa quando liberarem os quartos.']]);room.flag.end=1}}));
   room.add(npc('mar',292,152,MAR,async()=>say('Marombeiro',st<7?'Gabriela, você veio treinar ou pretende morar aqui? Te vejo mais que o espelho.':'Respeito. Medalha merecida.'),'l'));
@@ -694,40 +708,55 @@ function paintBeach(c,sun){const P=mk(c),r=rng(21),Wd=480;
   P('#e84a6f',340,168,24,8);P('#f4f4f4',340,170,24,1);P('#f4f4f4',340,173,24,1);P('#fff',136,96,3,2);P('#f0b0a0',452,150,3,2)}
 function umbrella(id,x,y,c1,c2,act){return deco(id,x-2,y-2,4,4,o=>{R('rgba(0,0,0,.15)',x-14,y,28,4);R('#17101a',x-1,y-30,3,31);R('#ddd',x,y-30,1,30);R('#17101a',x-17,y-36,34,9);for(let i=0;i<4;i++)R(i%2?c1:c2,x-16+i*8,y-35,8,7);R('#17101a',x-13,y-39,26,4);R(c1,x-12,y-38,24,3)},act,{top:y-48})}
 STEPS[3]=async function(){let st=0,sun=false,end=false;const look=Object.assign({},GABI,{id:'gabib',top:'#2f8a64',bottom:'#3f6aa0',shorts:1,cargo:0,shoes:GABI.skin}),KB=Object.assign({},KAUAN,{id:'kauanb',nosleeve:1,shorts:1,shoes:KAUAN.skin});WHO.Kauan=KB;
-  const ball={x:404,y:122,z:0,vis:true,held:null},fl={u:0,on:false};
+  const ball={x:404,y:122,z:0,vis:true,held:null,spin:0},fl={st:{u:0},on:false};
   const room=new Room({w:480,start:[120,150],startDir:'r',look,minY:88,maxY:176,paint:c=>paintBeach(c,sun),walls:[[248,104,4,56]],
     under(cam){for(let x=0;x<480;x+=18){const k=Math.sin(time*1.6+x*.2);R(sun?'#ffd0a0':'#e8fbff',x+k*4,74+k*2,12,1);R(sun?'#e8a080':'#bfeaf6',x+6-k*3,66,8,1)}},
-    over(cam){T('QUIOSQUE',51-cam,56.5,{align:'center',size:6,b:1,c:'#f4e8cf'});if(sun)R('rgba(255,120,60,.16)',0,0,480,H)},
-    ups(dt){if(fl.on){ball.x=lerp(fl.x0,fl.x1,fl.u);ball.y=lerp(fl.y0,fl.y1,fl.u);ball.z=Math.max(0,lerp(fl.z0,fl.z1,Math.min(1,fl.u))+4*fl.h*fl.u*(1-fl.u))}else if(ball.held){const p=ball.held;ball.x=(p.px!=null?p.px:p.x)+((p.dir==='l')?-7:7);ball.y=(p.py!=null?p.py:p.y)+1;ball.z=9}}});
-  room.add({id:'ballv',x:0,y:0,w:0,h:0,get sy(){return ball.y+1},draw(){if(!ball.vis)return;R('rgba(0,0,0,.22)',ball.x-4,ball.y-1,8,2);icon('ball',ball.x-6,ball.y-9-ball.z)}});
+    over(cam){T('QUIOSQUE',51-cam,56.5,{align:'center',size:6,b:1,c:'#f4e8cf'});if(sun)R('rgba(255,120,60,.16)',0,0,480,H);if(ind.on&&fl.on){const u=clamp(fl.st.u,0,1),ok=u>=.55,r=Math.round(lerp(11,5,u)),cx=Math.round(ball.x),cy=Math.round(ball.y-3-ball.z);g.strokeStyle=ok?'#6fe08a':'#ffffff';g.lineWidth=1;g.beginPath();g.arc(cx+.5,cy+.5,r,0,TAU);g.stroke();if(ind.early)T('espera…',cx-cam,cy-r-9,{align:'center',size:5,b:1,sh:1})}},
+    ups(dt){if(fl.on){const u=clamp(fl.st.u,0,1);ball.x=lerp(fl.x0,fl.x1,u);ball.y=lerp(fl.y0,fl.y1,u);ball.z=Math.max(0,lerp(fl.z0,fl.z1,u)+4*fl.h*u*(1-u));ball.spin+=dt*9}else if(ball.held){const p=ball.held;ball.x=(p.px!=null?p.px:p.x)+((p.dir==='l')?-7:7);ball.y=(p.py!=null?p.py:p.y)+1;ball.z=9}}});
+  room.ball=ball;room.add({id:'ballv',x:0,y:0,w:0,h:0,get sy(){return ball.y+1},draw(){if(!ball.vis)return;R('rgba(0,0,0,.22)',ball.x-4,ball.y-1,8,2);icon('ball',ball.x-6,ball.y-9-ball.z)}});
   for(const[id,y]of[['pa',102],['pb',160]])room.add(deco(id,248,y,4,3,o=>{R('#17101a',247,y-24,6,27);R('#8a6a3a',248,y-23,4,25);R('#f4f4f4',247,y-24,6,2)}));
   room.add({id:'net',x:249,y:104,w:2,h:56,sy:150,draw(){R('#17101a',249,86,2,60);for(let y=88;y<146;y+=4)R('rgba(255,255,255,.75)',249,y,2,2);R('#f4f4f4',249,84,2,2)}});
   room.add(umbrella('u1',398,112,'#e84a3a','#f4f4f4',null));room.add(umbrella('u2',96,172,'#4a7ac0','#f6d27a',()=>say('Gabriela','Sombra, cadeira e vista pro mar. Se eu sentar aqui, não levanto mais.')));
   const bh=room.add({id:'ball',x:398,y:116,w:12,h:8,top:100,act:async o=>{o.hidden=true;sfx.pick();ball.held=room.p;await got('ball','Bola de futevôlei','Estava dormindo na sombra do guarda-sol listrado.');st=1;goal='Leve a bola até o Kauan'}});
-  const fly=(x1,y1,z1,h,T)=>{fl.x0=ball.x;fl.y0=ball.y;fl.z0=ball.z;fl.x1=x1;fl.y1=y1;fl.z1=z1;fl.h=h;fl.u=0;fl.on=true;ball.held=null;return tween(fl,{u:1.1},T*1.1,ease.l)};
+  // a bola sempre parte de onde está: nada de teletransporte
+  const fly=(x1,y1,z1,h,T)=>{const st={u:0};Object.assign(fl,{x0:ball.x,y0:ball.y,z0:ball.z,x1,y1,z1,h,st,on:true});ball.held=null;return tween(st,{u:1},T,ease.l).then(()=>{if(fl.st!==st)return;fl.on=false;ball.x=x1;ball.y=y1;ball.z=z1})};
+  const ind={on:false};
   const Z={H:23,M:14,L:3},NAME={H:'CABEÇA',M:'PEITO',L:'PÉ'};
   const kau=room.add(npc('kau',204,132,KB,async()=>{const p=room.p;
     if(st===0)return say('Kauan','A bola! Acho que deixei perto do guarda-sol listrado, lá pro lado dos coqueiros.');
     await talk([['Kauan','Beleza. Aula número um de futevôlei. Regra de ouro: não pode usar as mãos.'],['Gabriela','Então é vôlei pra quem gosta de sofrer.'],['Kauan','Exatamente. Bola alta: cabeça. Bola no meio: peito. Bola baixa: pé. Eu jogo, você devolve.']]);goal='';
     await fade(1,.4);room.noWalk=true;room.tgt=null;p.x=214;p.y=134;p.dir='r';kau.px=286;kau.py=134;kau.x=281;kau.y=130;kau.dir='l';kau.nomark=true;room.camLock=true;room.cam=250-VW/2;ball.held=kau;await fade(0,.4);
-    const GX=p.x+8,GY2=p.y+1,KX=kau.px-8;
+    const GX=p.x+7,GY2=p.y+1,hands=q=>({x:q.px-7,y:q.py+1});
+    const toKauHands=async(h,T)=>{const k=hands(kau);await fly(k.x,k.y,9,h,T);ball.held=kau};
+    const landAndRoll=async(x,y,dx)=>{await fly(x,y,0,4,.32);sfx.step();await fly(x+dx,y+2,0,3,.28);await fly(x+dx*1.6,y+3,0,0,.25)};
+    const gabiMove=t=>{if(t==='H')hopP(p,6);else if(t==='M')hopP(p,3);else{p.f=1;setTimeout(()=>p.f=0,260)}};
+    // bola vindo do Kauan até a Gabi; devolve 1 = acertou, 0 = perdeu
+    const incoming=async(type,T,check)=>{hopP(kau,3);const f=fly(GX,GY2,Z[type],type==='L'?24:20,T);ind.on=true;let res=null;
+      await until(()=>{if(res!==null)return true;const pr=check();if(pr){if(fl.st.u<.55){ind.early=1;return false}res=pr===type||pr===true?1:-1;return true}if(tscale>1&&fl.st.u>.72){res=1;return true}return!fl.on});
+      ind.on=false;ind.early=0;if(res===1){f.catch(()=>{});return 1}
+      if(res===-1)f.catch(()=>{});else await f;await landAndRoll(GX-12,GY2+3,-7);return 0};
+    // Gabi devolve: a bola parte de onde ela tocou, sem saltos
+    const gabiReturn=async(type)=>{sfx.hit();gabiMove(type);await fly(kau.px-7,kau.py+1,14,28,1.15)};
+    const kauRecover=async()=>{await wait(.35);await toKauHands(8,.45)};
+    const gabiKickBack=async()=>{await wait(.4);p.f=1;setTimeout(()=>p.f=0,250);sfx.step();await toKauHands(22,1.1)};
     { // movimentos básicos: três botões grandes
-      const m=UI.startMini('<div class="ttl">Movimentos básicos</div><div class="msg">Observe a altura da bola</div><div class="row"><button class="big" data-k="H">CABEÇA</button><button class="big" data-k="M">PEITO</button><button class="big" data-k="L">PÉ</button></div><div class="hint">Toque no movimento certo quando a bola chegar</div>'),msg=m.querySelector('.msg'),bs=[...m.querySelectorAll('.big')];let pressed=null,ok=0,lastT='';
-      bs.forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();if(fl.on&&fl.u>.3&&!pressed)pressed=b.dataset.k}));
+      const m=UI.startMini('<div class="ttl">Movimentos básicos</div><div class="msg">Observe a altura da bola</div><div class="row"><button class="big" data-k="H">CABEÇA</button><button class="big" data-k="M">PEITO</button><button class="big" data-k="L">PÉ</button></div><div class="hint">Espere a bola chegar perto e toque no movimento certo</div>'),msg=m.querySelector('.msg'),bs=[...m.querySelectorAll('.big')];let pressed=null,ok=0,lastT='';
+      bs.forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();pressed=b.dataset.k}));
       while(ok<5){let type;do{type=pick(['H','M','L'])}while(type===lastT);lastT=type;pressed=null;bs.forEach(b=>b.classList.toggle('lit',b.dataset.k===type));msg.textContent='Bola '+(type==='H'?'alta':type==='M'?'no meio':'baixa')+' → '+NAME[type]+'  ·  '+ok+' / 5';
-        hopP(kau,3);await wait(.2);const f=fly(GX,GY2,Z[type],type==='H'?26:type==='M'?30:34,2);f.catch(()=>{});await until(()=>pressed||fl.u>=1.02||(tscale>1&&fl.u>.8&&(pressed=type)));
-        if(pressed===type){ok++;sfx.hit();hopP(p,type==='H'?7:3);p.f=type==='L'?1:0;msg.textContent=pick(['Boa!','Isso!','Linda!'])+'  ·  '+ok+' / 5';await fly(KX,GY2,12,30,1.25);p.f=0;fl.on=false;ball.held=kau}
-        else{sfx.bad();msg.textContent=pressed?'Era '+NAME[type]+'!':'Passou! Tenta de novo';await tween(fl,{u:1.1},.3,ease.l).catch(()=>{});fl.on=false;ball.z=0;await wait(.7);ball.held=kau}
-        await wait(.3)}UI.endMini()}
+        await wait(.5);const r=await incoming(type,2.1,()=>{const x=pressed;pressed=null;return x});
+        if(r===1){ok++;msg.textContent=pick(['Boa!','Isso!','Linda!'])+'  ·  '+ok+' / 5';await gabiReturn(type);hopP(kau,2);await toKauHands(6,.35)}
+        else{sfx.bad();msg.textContent='Era '+NAME[type]+'! Vamos de novo';await gabiKickBack()}
+        await wait(.25)}UI.endMini()}
     await talk([['Kauan','Olha aí! Cinco toques. Você aprende rápido.'],['Gabriela','A areia quase ganhou algumas. Mas eu ganhei mais.'],['Kauan','Então vamos pra um joguinho. Só eu e você, até cinco. Sem pressão.'],['Gabriela','Você fala “sem pressão” com cara de quem quer ganhar.']]);
-    for(;;){ // partida recreativa: um toque só
-      let us=0,them=0,rally=0,tapd=false;const m=UI.startMini('<div class="ttl">Gabi × Kauan · até 5</div><div class="msg">0 × 0</div><div class="row"><button class="big">TOCAR NA BOLA</button></div><div class="hint">Toque quando o círculo ficar verde</div>'),msg=m.querySelector('.msg');m.querySelector('.big').addEventListener('pointerdown',e=>{e.preventDefault();tapd=true});
-      const ring=UI.el.ring,score=t=>msg.textContent=(t?t+'  ·  ':'')+'Gabi '+us+' × '+them+' Kauan';ball.held=kau;
-      while(us<5&&them<5){const type=pick(['H','M','L']);tapd=false;hopP(kau,3);await wait(.15);const f=fly(GX,GY2,Z[type],type==='L'?30:26,1.6);f.catch(()=>{});ring.style.display='block';let res=0;
-        await until(()=>{const u=fl.u,gr=u>.68&&u<1.06,[sx,sy]=viewToCss(GX-room.camX,GY2-10-Z[type]);ring.style.transform='translate('+sx+'px,'+(sy+cv.offsetTop)+'px) scale('+Math.max(.4,1.7-u*1.3)+')';ring.classList.toggle('ok',gr);if(tscale>1&&u>.8)tapd=true;if(tapd){res=gr?1:-1;return true}return u>=1.08});ring.style.display='none';
-        if(res===1){sfx.hit();shake=.12;rally++;hopP(p,type==='H'?7:3);score(pick(['Boa!','Subiu!','Linda!']));const miss=Math.random()<(rally>1?.45:.25);await fly(KX+(miss?16:0),GY2+(miss?8:0),miss?0:12,28,1.2);
-          if(miss){fl.on=false;us++;rally=0;sfx.ok();score(pick(['Ponto seu!','Ponto da Gabi!']));await wait(1);ball.held=kau}else fl.on=false}
-        else{sfx.bad();await tween(fl,{u:1.1},.25,ease.l).catch(()=>{});fl.on=false;ball.z=0;them++;rally=0;score(res?'Cedo demais!':'Passou!');hopP(kau,6);await wait(1);ball.held=kau}}
+    for(;;){ // partida recreativa: um toque só, com rally contínuo
+      let us=0,them=0,rally=0,tapd=false;const m=UI.startMini('<div class="ttl">Gabi × Kauan · até 5</div><div class="msg">0 × 0</div><div class="row"><button class="big">TOCAR NA BOLA</button></div><div class="hint">Toque quando o círculo em volta da bola ficar verde</div>'),msg=m.querySelector('.msg');m.querySelector('.big').addEventListener('pointerdown',e=>{e.preventDefault();tapd=true});
+      const score=t=>msg.textContent=(t?t+'  ·  ':'')+'Gabi '+us+' × '+them+' Kauan';
+      while(us<5&&them<5){const type=pick(['H','M','L']);tapd=false;await wait(.35);
+        const r=await incoming(type,rally?1.45:1.7,()=>{if(!tapd)return null;tapd=false;return true});
+        if(r!==1){them++;rally=0;sfx.bad();hopP(kau,6);score('A bola caiu!');await gabiKickBack();continue}
+        rally++;score(pick(['Boa!','Subiu!','Linda!']));await gabiReturn(type);
+        if(Math.random()<(rally>1?.45:.3)){sfx.ok();us++;rally=0;score(pick(['Ponto seu!','Ponto da Gabi!']));await landAndRoll(kau.px+8,kau.py+3,7);await kauRecover()}
+        else{hopP(kau,4);sfx.hit()}}
       UI.endMini();if(us>=5){hopP(p,8);await wait(.5);await talk([['Kauan','Perdi?! Pra minha própria aluna?!'],['Gabriela','Eu tive um bom professor. Teimoso, mas bom.']]);break}
       await say('Kauan','Ganhei essa. Mas você me fez suar — juro.');const i=await choose('Gabriela','E agora?',['Revanche. Agora.','Deixa pra próxima — hoje foi empate moral']);if(i===1){await say('Kauan','Empate moral aceito. Mas só hoje.');break}}
     await fade(1,.8);sun=true;room.repaint();p.x=292;p.y=96;p.dir='u';kau.px=310;kau.py=96;kau.x=305;kau.y=92;kau.dir='u';ball.held=null;fl.on=false;ball.x=326;ball.y=100;ball.z=0;room.cam=300-VW/2;await wait(.4);await fade(0,1.4);
@@ -737,6 +766,7 @@ STEPS[3]=async function(){let st=0,sun=false,end=false;const look=Object.assign(
   await cut(()=>talk([['','Areia clara, mar azul e uma rede de futevôlei esperando no meio da praia.'],['Kauan','Gabi! Chegou na hora. Bora jogar um futevôlei?'],['Gabriela','Eu nunca joguei isso na vida.'],['Kauan','Detalhe. Eu te ensino. Primeiro, acha a bola pra mim? Deixei perto do guarda-sol listrado.']]));
   goal='Encontre a bola, perto do guarda-sol listrado';await until(()=>end);WHO.Kauan=KAUAN;await endChapter(2,'Uma bola de futevôlei')};
 
+function shade2(h){const n=parseInt(h.slice(1),16),f=v=>Math.round(v*.72);return'rgb('+f(n>>16&255)+','+f(n>>8&255)+','+f(n&255)+')'}
 // ============ CAPÍTULO IV — SPEAK, O GUARDIÃO DO SOFÁ ============
 function paintHome(c){const P=mk(c),r=rng(33),Wd=400;P('#d8c3a5',0,0,Wd,80);for(let x=0;x<Wd;x+=16)P('#d0b998',x,0,1,80);P('#f4e8cf',0,0,Wd,3);P('#8a6a4a',0,76,Wd,5);P('#6b4a32',0,80,Wd,2);
   // janela + cortinas
@@ -760,7 +790,7 @@ STEPS[4]=async function(){let st=0,checks=0,trail=0,cush=0,remote=false,film=fal
   room.pet={x:0,y:0,hidden:true,mode:'stay',f:0,ft:0};
   const sofa=room.add(deco('sofa',150,84,100,12,o=>{R('#17101a',149,54,102,45);R('#7a4a5a',150,55,100,26);R('#8a566a',152,57,96,3);R('#935a6c',150,79,100,14);R('#a86a7c',160,80,39,10);R('#a86a7c',201,80,39,10);R('#6a3a4a',150,66,10,31);R('#6a3a4a',240,66,10,31);R('#5a2a3a',150,93,100,5);
     for(let i=0;i<cush;i++)icon('cushion',[162,226,194][i],68);
-    if(room.flag.couch){drawSeated(room.p.look,182,86);drawSeated(KAUAN,222,86);R('#935a6c',171,86,62,7);g.drawImage(speakSpr(0,1),189,72);const t=time%2;if(room.zoom===1)T('z',214+t*3-room.camX,70-t*5,{size:5+t*1.5,c:'#fff',alpha:1-t/2,i:1,sh:1})}},
+    if(room.flag.couch){const P2=[[room.p.look,182],[KAUAN,222]];for(const[L2,x]of P2){drawSeated(L2,x,80);R('#17101a',x-6,78,13,7);R(L2.bottom,x-5,79,11,5);R(shade2(L2.bottom),x-5,83,11,1)}R('#17101a',150,84,100,1);R('#935a6c',150,85,100,8);R('#a86a7c',152,85,96,2);for(const[L2,x]of P2){R('#17101a',x-5,92,4,8);R('#17101a',x+1,92,4,8);R(L2.bottom,x-4,92,2,6);R(L2.bottom,x+2,92,2,6);R(L2.shoes,x-5,97,4,2);R(L2.shoes,x+1,97,4,2)}g.drawImage(speakSpr(0,1),190,64);const t=time%2;if(room.zoom===1)T('z',214+t*3-room.camX,70-t*5,{size:5+t*1.5,c:'#fff',alpha:1-t/2,i:1,sh:1})}},
     async()=>{if(st<6)return say('Gabriela','O sofá mais confortável do mundo. Mas ainda tem coisa pra arrumar antes de sentar.');room.flag.sit=1},{top:42}));
   const spot=(id,x,y,w,h,top,miss,dx,dy)=>({id,x,y,w,h,top,async hide(){if(st>0)return false;if(seen[id]){await say('','Nada novo por aqui.');return true}seen[id]=1;checks++;
     if(checks<3){await say('',miss+(checks===2?' Um rabinho preto some atrás de um móvel…':''));return true}
