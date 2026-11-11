@@ -1,6 +1,6 @@
 // ============ FLUXO, MENU E INICIALIZAÇÃO ============
 async function flow(i){try{for(let k=i;k<STEPS.length;k++){if(!STEPS[k])break;if(k>=1&&k<=5)await UI.chapter('Capítulo '+ROMAN[k-1],CH[k-1].t,CH[k-1].s);await STEPS[k]()}}catch(e){if(e!==CANCEL){console.error(e);window.__err=String(e&&e.stack||e)}}}
-function jump(i){cancelAll();closeMenu();Player.stop();Player.show(false);$('#fade').style.transition='none';$('#fade').style.opacity=1;scene=null;flow(i)}
+function jump(i){cancelAll();closeMenu();if(!BGM.want)Player.stop();Player.show(false);$('#fade').style.transition='none';$('#fade').style.opacity=1;scene=null;flow(i)}
 const menu=$('#menu');
 function closeMenu(){menu.style.display='none';UI.setMenu(false)}
 function openMenu(){UI.setMenu(true);menu.style.display='block';const names=['Prólogo — A biblioteca',...CH.map((c,i)=>'Capítulo '+ROMAN[i]+' — '+c.t),'Epílogo — A casa de esfirras'];
@@ -19,7 +19,7 @@ async function title(){const bg=document.createElement('canvas');bg.width=W;bg.h
   const cont=save.ch>0,c=$('#card');c.innerHTML='<div class="k">Uma história original de Kauan</div><div class="t" style="font-size:calc(46*var(--u));letter-spacing:.12em">GABRIELA</div><div class="s" style="font-size:calc(21*var(--u))">Entre Páginas e Memórias</div><div class="s" style="font-size:calc(14.5*var(--u));opacity:.75;margin-top:calc(26*var(--u))">Algumas histórias merecem ser lembradas.</div>'+
     '<div style="margin-top:calc(46*var(--u));display:flex;flex-direction:column;gap:calc(10*var(--u));width:76%"><button id="bGo" style="min-height:calc(58*var(--u));border-radius:99px;background:#f3ece0;color:#17131c;font-weight:700;font-size:calc(18*var(--u))">'+(cont?'Continuar':'Começar')+'</button>'+(cont?'<button id="bNew" style="min-height:calc(50*var(--u));border-radius:99px;border:1px solid rgba(255,255,255,.3);font-size:calc(15.5*var(--u))">Recomeçar do início</button>':'')+'</div>';
   c.style.display='flex';c.style.background='linear-gradient(rgba(6,5,10,.25),rgba(6,5,10,.8) 60%)';requestAnimationFrame(()=>c.classList.add('in'));
-  const go=i=>{AudioSys.unlock();sfx.ok();c.classList.remove('in');setTimeout(()=>{c.style.display='none';c.style.background=''},500);jump(i)};
+  const go=i=>{if(BGM.start())ambient(null);AudioSys.unlock();sfx.ok();c.classList.remove('in');setTimeout(()=>{c.style.display='none';c.style.background=''},500);jump(i)};
   $('#bGo').onclick=()=>go(Math.min(save.ch,6));if(cont)$('#bNew').onclick=()=>{save={ch:0,fin:false};persist();go(0)}}
 async function boot(){resize();await Player.init();requestAnimationFrame(frame);const m=/^#c(\d)$/.exec(location.hash);if(m){save.ch=Math.max(save.ch,+m[1]);return flow(+m[1])}title().catch(e=>{if(e!==CANCEL)console.error(e)})}
 window.__g={get scene(){return scene},get busy(){return busy},set speed(v){tscale=v},save,Player,UI};

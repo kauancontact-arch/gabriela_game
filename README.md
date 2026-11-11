@@ -7,6 +7,5 @@ Uma história original de Kauan.
 - `server.js` — servidor estático usado no Railway (`npm start`)
 
 ## Músicas e letras
-O jogo não inclui as faixas nem as letras. O player procura `media/imprevisto.mp3`, `media/enigma.mp3` e os arquivos de letra
-`media/imprevisto.json` / `media/enigma.json` (gerados pelo botão "Copiar dados para publicar" no menu do jogo).
-Sem eles, toca uma faixa instrumental demonstrativa.
+Coloque os áudios e as letras em `media/` (veja `media/README.md`). Com os áudios presentes, a playlist toca
+automaticamente durante todo o jogo; sem eles, toca a trilha instrumental original.

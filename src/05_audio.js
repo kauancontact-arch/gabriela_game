@@ -1,7 +1,7 @@
 // ============ ÁUDIO: efeitos, trilha ambiente original e player da playlist ============
 let AC=null,master=null,sfxBus=null,musBus=null,muted=false,curTune=null,pendTune=null,tuneT0=0,tuneI=0,tGain=null;
 try{muted=localStorage.getItem('gab-mute')==='1'}catch(e){}
-const AudioSys={unlock(){if(AC){if(AC.state==='suspended')AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination);
+const AudioSys={unlock(){if(BGM.want&&!Player.playing&&Player.hasReal())Player.play();if(AC){if(AC.state==='suspended')AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination);
     sfxBus=AC.createGain();sfxBus.gain.value=.5;sfxBus.connect(master);const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;musBus=AC.createGain();musBus.gain.value=.34;musBus.connect(lp);lp.connect(master);
     const dl=AC.createDelay();dl.delayTime.value=.33;const fb=AC.createGain();fb.gain.value=.28;musBus.connect(dl);dl.connect(fb);fb.connect(dl);const wet=AC.createGain();wet.gain.value=.3;dl.connect(wet);wet.connect(lp);
     if(pendTune){const p=pendTune;pendTune=null;ambient(p)}}catch(e){AC=null}},
@@ -28,7 +28,7 @@ function compile(tn){const T2=TUNES[tn],ev=[];let t=0;for(const tok of T2.lead.s
   const bars=T2.ch.length;for(let b=0;b<bars;b++){const r=midi(T2.ch[b]),t0=b*T2.bar;const pat=T2.bass==='waltz'?[[0,0,4],[4,12,3],[8,12,3],[4,7,3],[8,7,3]]:T2.bass==='drive'?[[0,0,2],[4,12,2],[6,0,2],[8,0,2],[12,12,2],[14,7,2]]:T2.bass==='bossa'?[[0,0,3],[3,7,3],[6,12,2],[8,0,3],[11,7,3],[14,12,2]]:[[0,0,4],[4,7,4],[8,12,4],[12,7,4]];
     for(const[o,i,d]of pat)ev.push([t0+o,r+i,d,1]);ev.push([t0,r+12,T2.bar,2]);ev.push([t0,r+19,T2.bar,2])}
   ev.sort((a,b)=>a[0]-b[0]);return{ev,len:bars*T2.bar,step:60/T2.bpm/4}}
-function ambient(name){if(!AC){pendTune=name;return}if(curTune&&curTune.name===name)return;
+function ambient(name){if(name&&typeof Player!=='undefined'&&Player.hasReal()&&BGM.start())return;if(!AC){pendTune=name;return}if(curTune&&curTune.name===name)return;
   if(tGain){const o=tGain;o.gain.setTargetAtTime(0,AC.currentTime,.25);setTimeout(()=>o.disconnect(),1500)}
   if(!name){curTune=null;return}tGain=AC.createGain();tGain.gain.value=.0001;tGain.gain.setTargetAtTime(1,AC.currentTime+.2,.6);tGain.connect(musBus);curTune=Object.assign(compile(name),{name});tuneT0=AC.currentTime+.3;tuneI=0}
 setInterval(()=>{if(!AC||!curTune||AC.state!=='running')return;const c=curTune,now=AC.currentTime;if(tuneT0<now-1){tuneT0=now+.1;tuneI=0}
@@ -40,24 +40,29 @@ const Media={db:null,open(){return new Promise(r=>{try{const q=indexedDB.open('g
   get(k){return new Promise(r=>{if(!this.db)return r(null);try{const q=this.db.transaction('f').objectStore('f').get(k);q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)}catch(e){r(null)}})},
   put(k,v){return new Promise(r=>{if(!this.db)return r(false);try{const tx=this.db.transaction('f','readwrite');tx.objectStore('f').put(v,k);tx.oncomplete=()=>r(true);tx.onerror=()=>r(false)}catch(e){r(false)}})},
   del(k){return this.put(k,null)}};
+// letras no formato LRC: "[01:23.45] frase"
+function parseLrc(txt){const lines=[];for(const row of txt.split(/\r?\n/)){const ts=[...row.matchAll(/\[(\d+):(\d+(?:[.,]\d+)?)\]/g)],x=row.replace(/\[[^\]]*\]/g,'').trim();if(!ts.length||!x)continue;for(const m of ts)lines.push({t:+m[1]*60+parseFloat(m[2].replace(',','.')),x})}lines.sort((a,b)=>a.t-b.t);return lines.length?{lines}:null}
+// trilha automática: com as faixas reais disponíveis, a playlist toca o jogo inteiro, sem parar entre capítulos
+const BGM={want:false,start(){if(!Player.hasReal())return false;this.want=true;if(!Player.playing){if(!Player.real)Player.load(Player.cur);Player.play()}return true}};
 // ---------- player "Kauan e Gabi" ----------
 const TRACKS=[{id:'imprevisto',title:'Imprevisto',artist:'Yago Oproprio',demo:'driveA',len:140},{id:'enigma',title:'Enigma',artist:'Yago Oproprio',demo:'driveB',len:188}];
 const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+':'+String(s%60).padStart(2,'0')};
 const Player={audio:new Audio(),cur:0,playing:false,real:false,blobs:{},lyr:{},raw:{},demoT:0,shown:false,el:$('#player'),ly:$('#lyr'),
   async init(){this.audio.preload='auto';this.audio.addEventListener('ended',()=>this.next(true));this.audio.addEventListener('error',()=>{if(this.real&&!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render()}});
-    await Media.open();for(const t of TRACKS){const b=await Media.get('a:'+t.id);if(b)this.blobs[t.id]=b;let l=null;try{l=JSON.parse(localStorage.getItem('gab-lyr-'+t.id))}catch(e){}
-      if(!l){try{const r=await fetch('media/'+t.id+'.json');if(r.ok)l=await r.json()}catch(e){}}if(l&&l.lines){this.lyr[t.id]=l.lines;this.raw[t.id]=l.raw||l.lines.map(x=>x.x).join('\n')}}
+    await Media.open();for(const t of TRACKS){for(const ext of['mp3','mpeg','m4a']){try{const r=await fetch('media/'+t.id+'.'+ext,{method:'HEAD'});if(r.ok){t.src='media/'+t.id+'.'+ext;this.avail=true;break}}catch(e){}}const b=await Media.get('a:'+t.id);if(b)this.blobs[t.id]=b;let l=null;try{l=JSON.parse(localStorage.getItem('gab-lyr-'+t.id))}catch(e){}
+      if(!l){try{const r=await fetch('media/'+t.id+'.json');if(r.ok)l=await r.json()}catch(e){}}if(!l){try{const r=await fetch('media/'+t.id+'.lrc');if(r.ok)l=parseLrc(await r.text())}catch(e){}}if(l&&l.lines){this.lyr[t.id]=l.lines;this.raw[t.id]=l.raw||l.lines.map(x=>x.x).join('\n')}}
     this.build();this.load(0)},
   build(){this.el.innerHTML='<div class="r1"><canvas width="160" height="160"></canvas><div class="meta"><div class="pl">Playlist · Kauan e Gabi</div><div class="tt"></div><div class="ar"></div></div><div class="eq"><i></i><i></i><i></i><i></i></div></div><div class="prog"><div class="pf"></div></div><div class="tm"><span class="t0">0:00</span><span class="t1">0:00</span></div><div class="ctl"><button class="pv" aria-label="Anterior">⏮</button><button class="pp" aria-label="Tocar">▶</button><button class="nx" aria-label="Próxima">⏭</button><input type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><div class="note"></div>';
     cover(this.el.querySelector('canvas'));const q=s=>this.el.querySelector(s);q('.pp').addEventListener('click',()=>this.toggle());q('.pv').addEventListener('click',()=>this.next(false,-1));q('.nx').addEventListener('click',()=>this.next(false,1));
     const vol=q('input');this.audio.volume=.5;if(this.audio.volume!==.5)vol.style.display='none';this.audio.volume=1;vol.addEventListener('input',()=>{this.audio.volume=+vol.value;if(musBus)musBus.gain.value=.34*vol.value});
     const pr=q('.prog'),seek=e=>{const r=pr.getBoundingClientRect(),k=clamp((e.clientX-r.left)/r.width,0,1);if(this.real&&this.audio.duration)this.audio.currentTime=k*this.audio.duration;else this.demoT=k*TRACKS[this.cur].len};pr.addEventListener('pointerdown',e=>{pr.setPointerCapture&&pr.setPointerCapture(e.pointerId);seek(e)});pr.addEventListener('pointermove',e=>{if(e.buttons)seek(e)})},
   load(i){const was=this.playing;this.stop();this.cur=(i+TRACKS.length)%TRACKS.length;const t=TRACKS[this.cur];if(this.url){URL.revokeObjectURL(this.url);this.url=null}
-    if(this.blobs[t.id]){this.url=URL.createObjectURL(this.blobs[t.id]);this.audio.src=this.url;this.real=true}else{this.audio.src='media/'+t.id+'.mp3';this.real=true}this.demoT=0;this.render();if(was)this.play()},
+    if(this.blobs[t.id]){this.url=URL.createObjectURL(this.blobs[t.id]);this.audio.src=this.url;this.real=true}else if(t.src){this.audio.src=t.src;this.real=true}else{this.audio.removeAttribute('src');this.real=false}this.demoT=0;this.render();if(was)this.play()},
   render(){const t=TRACKS[this.cur],q=s=>this.el.querySelector(s);q('.tt').textContent=t.title;q('.ar').textContent=t.artist;q('.note').textContent=this.real?'':'Faixa demonstrativa — adicione o áudio em Menu › Músicas e letras';q('.note').style.display=this.real?'none':'block'},
-  play(){AudioSys.unlock();this.playing=true;this.el.classList.add('playing');this.el.querySelector('.pp').textContent='❚❚';if(this.real){ambient(null);const p=this.audio.play();if(p&&p.catch)p.catch(()=>{if(!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render();if(this.playing)ambient(TRACKS[this.cur].demo)}})}else ambient(TRACKS[this.cur].demo)},
+  play(){this.playing=true;AudioSys.unlock();this.el.classList.add('playing');this.el.querySelector('.pp').textContent='❚❚';if(this.real){ambient(null);const p=this.audio.play();if(p&&p.catch)p.catch(err=>{if(err&&err.name==='NotAllowedError'){this.playing=false;this.el.classList.remove('playing');this.el.querySelector('.pp').textContent='▶';return}if(!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render();if(this.playing)ambient(TRACKS[this.cur].demo)}})}else ambient(TRACKS[this.cur].demo)},
   stop(){this.playing=false;this.el.classList.remove('playing');this.el.querySelector('.pp').textContent='▶';try{this.audio.pause()}catch(e){}if(curTune&&(curTune.name==='driveA'||curTune.name==='driveB'))ambient(null)},
-  toggle(){this.playing?this.stop():this.play()},next(auto,d){const was=this.playing||auto;this.load(this.cur+(d||1));if(was)this.play()},
+  hasReal(){return this.avail||TRACKS.some(t=>this.blobs[t.id])},
+  toggle(){if(this.playing){this.stop();BGM.want=false}else{this.play();if(this.hasReal())BGM.want=true}},next(auto,d){const was=this.playing||auto;this.load(this.cur+(d||1));if(was)this.play()},
   time(){return this.real?this.audio.currentTime||0:this.demoT},dur(){return this.real&&this.audio.duration?this.audio.duration:TRACKS[this.cur].len},
   show(v,lyrics){this.shown=v;this.el.style.display=v?'block':'none';this.el.classList.remove('low');this.ly.style.display=v&&lyrics!==false?'block':'none'},
   tick(dt){if(!this.shown)return;if(this.playing&&!this.real){this.demoT+=dt;if(this.demoT>=TRACKS[this.cur].len)this.next(true)}const t=this.time(),d=this.dur(),q=s=>this.el.querySelector(s);q('.pf').style.width=clamp(t/d,0,1)*100+'%';q('.t0').textContent=fmt(t);q('.t1').textContent=fmt(d);

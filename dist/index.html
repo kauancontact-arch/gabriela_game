@@ -403,7 +403,7 @@ const toScreen=()=>[0,0];
 // ============ ÁUDIO: efeitos, trilha ambiente original e player da playlist ============
 let AC=null,master=null,sfxBus=null,musBus=null,muted=false,curTune=null,pendTune=null,tuneT0=0,tuneI=0,tGain=null;
 try{muted=localStorage.getItem('gab-mute')==='1'}catch(e){}
-const AudioSys={unlock(){if(AC){if(AC.state==='suspended')AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination);
+const AudioSys={unlock(){if(BGM.want&&!Player.playing&&Player.hasReal())Player.play();if(AC){if(AC.state==='suspended')AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination);
     sfxBus=AC.createGain();sfxBus.gain.value=.5;sfxBus.connect(master);const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;musBus=AC.createGain();musBus.gain.value=.34;musBus.connect(lp);lp.connect(master);
     const dl=AC.createDelay();dl.delayTime.value=.33;const fb=AC.createGain();fb.gain.value=.28;musBus.connect(dl);dl.connect(fb);fb.connect(dl);const wet=AC.createGain();wet.gain.value=.3;dl.connect(wet);wet.connect(lp);
     if(pendTune){const p=pendTune;pendTune=null;ambient(p)}}catch(e){AC=null}},
@@ -430,7 +430,7 @@ function compile(tn){const T2=TUNES[tn],ev=[];let t=0;for(const tok of T2.lead.s
   const bars=T2.ch.length;for(let b=0;b<bars;b++){const r=midi(T2.ch[b]),t0=b*T2.bar;const pat=T2.bass==='waltz'?[[0,0,4],[4,12,3],[8,12,3],[4,7,3],[8,7,3]]:T2.bass==='drive'?[[0,0,2],[4,12,2],[6,0,2],[8,0,2],[12,12,2],[14,7,2]]:T2.bass==='bossa'?[[0,0,3],[3,7,3],[6,12,2],[8,0,3],[11,7,3],[14,12,2]]:[[0,0,4],[4,7,4],[8,12,4],[12,7,4]];
     for(const[o,i,d]of pat)ev.push([t0+o,r+i,d,1]);ev.push([t0,r+12,T2.bar,2]);ev.push([t0,r+19,T2.bar,2])}
   ev.sort((a,b)=>a[0]-b[0]);return{ev,len:bars*T2.bar,step:60/T2.bpm/4}}
-function ambient(name){if(!AC){pendTune=name;return}if(curTune&&curTune.name===name)return;
+function ambient(name){if(name&&typeof Player!=='undefined'&&Player.hasReal()&&BGM.start())return;if(!AC){pendTune=name;return}if(curTune&&curTune.name===name)return;
   if(tGain){const o=tGain;o.gain.setTargetAtTime(0,AC.currentTime,.25);setTimeout(()=>o.disconnect(),1500)}
   if(!name){curTune=null;return}tGain=AC.createGain();tGain.gain.value=.0001;tGain.gain.setTargetAtTime(1,AC.currentTime+.2,.6);tGain.connect(musBus);curTune=Object.assign(compile(name),{name});tuneT0=AC.currentTime+.3;tuneI=0}
 setInterval(()=>{if(!AC||!curTune||AC.state!=='running')return;const c=curTune,now=AC.currentTime;if(tuneT0<now-1){tuneT0=now+.1;tuneI=0}
@@ -442,24 +442,29 @@ const Media={db:null,open(){return new Promise(r=>{try{const q=indexedDB.open('g
   get(k){return new Promise(r=>{if(!this.db)return r(null);try{const q=this.db.transaction('f').objectStore('f').get(k);q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)}catch(e){r(null)}})},
   put(k,v){return new Promise(r=>{if(!this.db)return r(false);try{const tx=this.db.transaction('f','readwrite');tx.objectStore('f').put(v,k);tx.oncomplete=()=>r(true);tx.onerror=()=>r(false)}catch(e){r(false)}})},
   del(k){return this.put(k,null)}};
+// letras no formato LRC: "[01:23.45] frase"
+function parseLrc(txt){const lines=[];for(const row of txt.split(/\r?\n/)){const ts=[...row.matchAll(/\[(\d+):(\d+(?:[.,]\d+)?)\]/g)],x=row.replace(/\[[^\]]*\]/g,'').trim();if(!ts.length||!x)continue;for(const m of ts)lines.push({t:+m[1]*60+parseFloat(m[2].replace(',','.')),x})}lines.sort((a,b)=>a.t-b.t);return lines.length?{lines}:null}
+// trilha automática: com as faixas reais disponíveis, a playlist toca o jogo inteiro, sem parar entre capítulos
+const BGM={want:false,start(){if(!Player.hasReal())return false;this.want=true;if(!Player.playing){if(!Player.real)Player.load(Player.cur);Player.play()}return true}};
 // ---------- player "Kauan e Gabi" ----------
 const TRACKS=[{id:'imprevisto',title:'Imprevisto',artist:'Yago Oproprio',demo:'driveA',len:140},{id:'enigma',title:'Enigma',artist:'Yago Oproprio',demo:'driveB',len:188}];
 const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+':'+String(s%60).padStart(2,'0')};
 const Player={audio:new Audio(),cur:0,playing:false,real:false,blobs:{},lyr:{},raw:{},demoT:0,shown:false,el:$('#player'),ly:$('#lyr'),
   async init(){this.audio.preload='auto';this.audio.addEventListener('ended',()=>this.next(true));this.audio.addEventListener('error',()=>{if(this.real&&!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render()}});
-    await Media.open();for(const t of TRACKS){const b=await Media.get('a:'+t.id);if(b)this.blobs[t.id]=b;let l=null;try{l=JSON.parse(localStorage.getItem('gab-lyr-'+t.id))}catch(e){}
-      if(!l){try{const r=await fetch('media/'+t.id+'.json');if(r.ok)l=await r.json()}catch(e){}}if(l&&l.lines){this.lyr[t.id]=l.lines;this.raw[t.id]=l.raw||l.lines.map(x=>x.x).join('\n')}}
+    await Media.open();for(const t of TRACKS){for(const ext of['mp3','mpeg','m4a']){try{const r=await fetch('media/'+t.id+'.'+ext,{method:'HEAD'});if(r.ok){t.src='media/'+t.id+'.'+ext;this.avail=true;break}}catch(e){}}const b=await Media.get('a:'+t.id);if(b)this.blobs[t.id]=b;let l=null;try{l=JSON.parse(localStorage.getItem('gab-lyr-'+t.id))}catch(e){}
+      if(!l){try{const r=await fetch('media/'+t.id+'.json');if(r.ok)l=await r.json()}catch(e){}}if(!l){try{const r=await fetch('media/'+t.id+'.lrc');if(r.ok)l=parseLrc(await r.text())}catch(e){}}if(l&&l.lines){this.lyr[t.id]=l.lines;this.raw[t.id]=l.raw||l.lines.map(x=>x.x).join('\n')}}
     this.build();this.load(0)},
   build(){this.el.innerHTML='<div class="r1"><canvas width="160" height="160"></canvas><div class="meta"><div class="pl">Playlist · Kauan e Gabi</div><div class="tt"></div><div class="ar"></div></div><div class="eq"><i></i><i></i><i></i><i></i></div></div><div class="prog"><div class="pf"></div></div><div class="tm"><span class="t0">0:00</span><span class="t1">0:00</span></div><div class="ctl"><button class="pv" aria-label="Anterior">⏮</button><button class="pp" aria-label="Tocar">▶</button><button class="nx" aria-label="Próxima">⏭</button><input type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><div class="note"></div>';
     cover(this.el.querySelector('canvas'));const q=s=>this.el.querySelector(s);q('.pp').addEventListener('click',()=>this.toggle());q('.pv').addEventListener('click',()=>this.next(false,-1));q('.nx').addEventListener('click',()=>this.next(false,1));
     const vol=q('input');this.audio.volume=.5;if(this.audio.volume!==.5)vol.style.display='none';this.audio.volume=1;vol.addEventListener('input',()=>{this.audio.volume=+vol.value;if(musBus)musBus.gain.value=.34*vol.value});
     const pr=q('.prog'),seek=e=>{const r=pr.getBoundingClientRect(),k=clamp((e.clientX-r.left)/r.width,0,1);if(this.real&&this.audio.duration)this.audio.currentTime=k*this.audio.duration;else this.demoT=k*TRACKS[this.cur].len};pr.addEventListener('pointerdown',e=>{pr.setPointerCapture&&pr.setPointerCapture(e.pointerId);seek(e)});pr.addEventListener('pointermove',e=>{if(e.buttons)seek(e)})},
   load(i){const was=this.playing;this.stop();this.cur=(i+TRACKS.length)%TRACKS.length;const t=TRACKS[this.cur];if(this.url){URL.revokeObjectURL(this.url);this.url=null}
-    if(this.blobs[t.id]){this.url=URL.createObjectURL(this.blobs[t.id]);this.audio.src=this.url;this.real=true}else{this.audio.src='media/'+t.id+'.mp3';this.real=true}this.demoT=0;this.render();if(was)this.play()},
+    if(this.blobs[t.id]){this.url=URL.createObjectURL(this.blobs[t.id]);this.audio.src=this.url;this.real=true}else if(t.src){this.audio.src=t.src;this.real=true}else{this.audio.removeAttribute('src');this.real=false}this.demoT=0;this.render();if(was)this.play()},
   render(){const t=TRACKS[this.cur],q=s=>this.el.querySelector(s);q('.tt').textContent=t.title;q('.ar').textContent=t.artist;q('.note').textContent=this.real?'':'Faixa demonstrativa — adicione o áudio em Menu › Músicas e letras';q('.note').style.display=this.real?'none':'block'},
-  play(){AudioSys.unlock();this.playing=true;this.el.classList.add('playing');this.el.querySelector('.pp').textContent='❚❚';if(this.real){ambient(null);const p=this.audio.play();if(p&&p.catch)p.catch(()=>{if(!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render();if(this.playing)ambient(TRACKS[this.cur].demo)}})}else ambient(TRACKS[this.cur].demo)},
+  play(){this.playing=true;AudioSys.unlock();this.el.classList.add('playing');this.el.querySelector('.pp').textContent='❚❚';if(this.real){ambient(null);const p=this.audio.play();if(p&&p.catch)p.catch(err=>{if(err&&err.name==='NotAllowedError'){this.playing=false;this.el.classList.remove('playing');this.el.querySelector('.pp').textContent='▶';return}if(!this.blobs[TRACKS[this.cur].id]){this.real=false;this.render();if(this.playing)ambient(TRACKS[this.cur].demo)}})}else ambient(TRACKS[this.cur].demo)},
   stop(){this.playing=false;this.el.classList.remove('playing');this.el.querySelector('.pp').textContent='▶';try{this.audio.pause()}catch(e){}if(curTune&&(curTune.name==='driveA'||curTune.name==='driveB'))ambient(null)},
-  toggle(){this.playing?this.stop():this.play()},next(auto,d){const was=this.playing||auto;this.load(this.cur+(d||1));if(was)this.play()},
+  hasReal(){return this.avail||TRACKS.some(t=>this.blobs[t.id])},
+  toggle(){if(this.playing){this.stop();BGM.want=false}else{this.play();if(this.hasReal())BGM.want=true}},next(auto,d){const was=this.playing||auto;this.load(this.cur+(d||1));if(was)this.play()},
   time(){return this.real?this.audio.currentTime||0:this.demoT},dur(){return this.real&&this.audio.duration?this.audio.duration:TRACKS[this.cur].len},
   show(v,lyrics){this.shown=v;this.el.style.display=v?'block':'none';this.el.classList.remove('low');this.ly.style.display=v&&lyrics!==false?'block':'none'},
   tick(dt){if(!this.shown)return;if(this.playing&&!this.real){this.demoT+=dt;if(this.demoT>=TRACKS[this.cur].len)this.next(true)}const t=this.time(),d=this.dur(),q=s=>this.el.querySelector(s);q('.pf').style.width=clamp(t/d,0,1)*100+'%';q('.t0').textContent=fmt(t);q('.t1').textContent=fmt(d);
@@ -838,9 +843,9 @@ STEPS[5]=async function(){let go=false;
   scene=room;music('driveB');await fade(0,.9);
   await cut(()=>talk([['','Fim de tarde numa rua tranquila de São Bernardo. Um Jetta cinza-chumbo estacionado, com o rádio ligado baixinho.'],['Kauan','Finalmente! Tava te esperando. Hoje a gente não tem destino — só playlist.'],['Gabriela','Deixa eu adivinhar: “Kauan e Gabi”.'],['Kauan','Existe outra?']]));
   goal='Toque no Jetta para entrar';await until(()=>go);goal='';await fade(1,.6);
-  const D=driveScene();scene=D;ambient(null);Player.load(0);Player.show(true);await fade(0,.8);
+  const D=driveScene();scene=D;if(!Player.playing){ambient(null);Player.load(0)}Player.show(true);await fade(0,.8);
   await talk([['','O painel acende. No celular, a playlist “Kauan e Gabi” já está na tela.'],['Kauan','Dá o play, DJ.']]);
-  goal='Toque em ▶ para tocar a playlist';await until(()=>Player.playing||(tscale>1&&(Player.play(),true)));goal='';D.vt=64;sfx.whoosh();
+  if(!Player.playing)goal='Toque em ▶ para tocar a playlist';await until(()=>Player.playing||(tscale>1&&(Player.play(),true)));goal='';D.vt=64;sfx.whoosh();
   await wait(4);goal='Vidros abertos, volume alto, São Bernardo passando devagar.';await wait(4.5);goal='';
   await driveMemory(D,'book','As conversas sobre livros que iam longe — e sempre acabavam em Dostoiévski.');await wait(2.5);
   await driveMemory(D,'halter','“Só mais uma série.” A disciplina dela na academia, que nunca era só mais uma.');await wait(2);
@@ -920,7 +925,7 @@ STEPS[6]=async function(){let inn=false,sit=false;
 
 // ============ FLUXO, MENU E INICIALIZAÇÃO ============
 async function flow(i){try{for(let k=i;k<STEPS.length;k++){if(!STEPS[k])break;if(k>=1&&k<=5)await UI.chapter('Capítulo '+ROMAN[k-1],CH[k-1].t,CH[k-1].s);await STEPS[k]()}}catch(e){if(e!==CANCEL){console.error(e);window.__err=String(e&&e.stack||e)}}}
-function jump(i){cancelAll();closeMenu();Player.stop();Player.show(false);$('#fade').style.transition='none';$('#fade').style.opacity=1;scene=null;flow(i)}
+function jump(i){cancelAll();closeMenu();if(!BGM.want)Player.stop();Player.show(false);$('#fade').style.transition='none';$('#fade').style.opacity=1;scene=null;flow(i)}
 const menu=$('#menu');
 function closeMenu(){menu.style.display='none';UI.setMenu(false)}
 function openMenu(){UI.setMenu(true);menu.style.display='block';const names=['Prólogo — A biblioteca',...CH.map((c,i)=>'Capítulo '+ROMAN[i]+' — '+c.t),'Epílogo — A casa de esfirras'];
@@ -939,7 +944,7 @@ async function title(){const bg=document.createElement('canvas');bg.width=W;bg.h
   const cont=save.ch>0,c=$('#card');c.innerHTML='<div class="k">Uma história original de Kauan</div><div class="t" style="font-size:calc(46*var(--u));letter-spacing:.12em">GABRIELA</div><div class="s" style="font-size:calc(21*var(--u))">Entre Páginas e Memórias</div><div class="s" style="font-size:calc(14.5*var(--u));opacity:.75;margin-top:calc(26*var(--u))">Algumas histórias merecem ser lembradas.</div>'+
     '<div style="margin-top:calc(46*var(--u));display:flex;flex-direction:column;gap:calc(10*var(--u));width:76%"><button id="bGo" style="min-height:calc(58*var(--u));border-radius:99px;background:#f3ece0;color:#17131c;font-weight:700;font-size:calc(18*var(--u))">'+(cont?'Continuar':'Começar')+'</button>'+(cont?'<button id="bNew" style="min-height:calc(50*var(--u));border-radius:99px;border:1px solid rgba(255,255,255,.3);font-size:calc(15.5*var(--u))">Recomeçar do início</button>':'')+'</div>';
   c.style.display='flex';c.style.background='linear-gradient(rgba(6,5,10,.25),rgba(6,5,10,.8) 60%)';requestAnimationFrame(()=>c.classList.add('in'));
-  const go=i=>{AudioSys.unlock();sfx.ok();c.classList.remove('in');setTimeout(()=>{c.style.display='none';c.style.background=''},500);jump(i)};
+  const go=i=>{if(BGM.start())ambient(null);AudioSys.unlock();sfx.ok();c.classList.remove('in');setTimeout(()=>{c.style.display='none';c.style.background=''},500);jump(i)};
   $('#bGo').onclick=()=>go(Math.min(save.ch,6));if(cont)$('#bNew').onclick=()=>{save={ch:0,fin:false};persist();go(0)}}
 async function boot(){resize();await Player.init();requestAnimationFrame(frame);const m=/^#c(\d)$/.exec(location.hash);if(m){save.ch=Math.max(save.ch,+m[1]);return flow(+m[1])}title().catch(e=>{if(e!==CANCEL)console.error(e)})}
 window.__g={get scene(){return scene},get busy(){return busy},set speed(v){tscale=v},save,Player,UI};
